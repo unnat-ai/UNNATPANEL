@@ -1,0 +1,14 @@
+{
+  "name": "unnatnewig-panel",
+  "version": "1.0.0",
+  "description": "Advanced Multi-Session Instagram Automation Panel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "instagram-private-api": "^1.45.3",
+    "ws": "^8.16.0"
+  }
+}
