@@ -6,7 +6,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 let sessions = {}; 
-let pendingChallenges = {}; // Temporary storage for accounts requiring OTP
+let pendingChallenges = {}; 
 
 let botConfig = {
     links: [],
@@ -40,8 +40,8 @@ const dashboardHtml = (statusMsg = '', challengeData = null) => `
     <title>𝙑𝙄𝘿𝙃𝘼𝙔𝘼𝙆 𝙑2 - Aesthetic Theme Panel</title>
     <style>
         body { 
-            background: linear-gradient(rgba(13, 17, 23, 0.85), rgba(13, 17, 23, 0.85)), url('data:image/jpeg;base64,YOUR_BASE64_STRING_HERE') no-repeat center center fixed;
-            background-size: cover;
+            /* Agar base64 image lagani hai toh url('data:image/jpeg;base64,YOUR_STRING') dalein, warna solid aesthetic gradient use hoga */
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
             color: #ff4757; 
             font-family: monospace; 
             padding: 20px; 
@@ -201,7 +201,6 @@ app.post('/connect', async (req, res) => {
     } catch (e) {
         if (e instanceof IgCheckpointError) {
             try {
-                // Request verification code via SMS/Email
                 await ig.challenge.auto(e);
                 const challengeInfo = ig.challenge.state;
                 pendingChallenges[username] = { igClient: ig };
