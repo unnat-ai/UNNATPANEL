@@ -37,10 +37,12 @@ const dashboardHtml = (statusMsg = '') => `
 <head>
     <title>𝙑𝙄𝘿𝙃𝘼𝙔𝘼𝙆 𝙑2 - Aesthetic Theme Panel</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap');
+        
         body { 
             background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
             color: #ff4757; 
-            font-family: monospace; 
+            font-family: monospace, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; 
             padding: 20px; 
             margin: 0; 
         }
@@ -82,7 +84,8 @@ const dashboardHtml = (statusMsg = '') => `
         button { 
             background: #ff4757; color: #fff; border: none; padding: 12px 20px; 
             font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; 
-            font-family: monospace; font-size: 14px; box-shadow: 0 4px #b3261e;
+            font-family: monospace, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; 
+            font-size: 14px; box-shadow: 0 4px #b3261e;
             transition: all 0.1s ease; margin-top: 5px;
         }
         button:active { transform: translateY(4px); box-shadow: 0 0 #b3261e; }
