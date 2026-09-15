@@ -159,9 +159,9 @@ const dashboardHtml = (statusMsg = '') => `
 </html>
 `;
 
-// Static route to serve background image
+// Direct mapping to your uploaded image filename on GitHub
 app.get('/background.jpg', (req, res) => {
-    res.sendFile(__dirname + '/22693.jpg');
+    res.sendFile(__dirname + '/aa8932103fd4d56e067aa5ba4d356c.jpg');
 });
 
 app.get('/', (req, res) => res.send(dashboardHtml()));
