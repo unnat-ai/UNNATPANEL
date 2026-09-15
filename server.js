@@ -1,13 +1,11 @@
 const express = require('express');
-const { IgApiClient, IgCheckpointError } = require('instagram-private-api');
+const { IgApiClient } = require('instagram-private-api');
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 let sessions = {}; 
-let pendingChallenges = {}; 
-
 let botConfig = {
     links: [],
     spamTexts: [],
@@ -33,14 +31,13 @@ function addLog(message) {
     if (liveLogs.length > 100) liveLogs.pop();
 }
 
-const dashboardHtml = (statusMsg = '', challengeData = null) => `
+const dashboardHtml = (statusMsg = '') => `
 <!DOCTYPE html>
 <html>
 <head>
     <title>𝙑𝙄𝘿𝙃𝘼𝙔𝘼𝙆 𝙑2 - Aesthetic Theme Panel</title>
     <style>
         body { 
-            /* Agar base64 image lagani hai toh url('data:image/jpeg;base64,YOUR_STRING') dalein, warna solid aesthetic gradient use hoga */
             background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
             color: #ff4757; 
             font-family: monospace; 
@@ -91,13 +88,11 @@ const dashboardHtml = (statusMsg = '', challengeData = null) => `
         button:active { transform: translateY(4px); box-shadow: 0 0 #b3261e; }
         .btn-stop { background: #d63031; box-shadow: 0 4px #8b0000; }
         .btn-fetch { background: #e84118; box-shadow: 0 4px #c23616; }
-        .btn-otp { background: #0984e3; box-shadow: 0 4px #09528a; }
 
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; font-weight: bold; font-size: 13px; }
         .stat-card { background: #010409; border: 1px dashed #ff4757; padding: 10px; text-align: center; border-radius: 4px; }
         .log-box { height: 200px; overflow-y: auto; background: #010409; border: 1px solid #ff4757; padding: 10px; font-size: 12px; margin-top: 15px; border-radius: 4px; white-space: pre-wrap; color: #00ff88; }
         .alert { background: rgba(232, 65, 24, 0.8); color: white; padding: 8px; margin-bottom: 15px; border-radius: 4px; text-align: center; }
-        .challenge-box { background: rgba(9, 132, 227, 0.2); border: 2px solid #0984e3; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -108,24 +103,10 @@ const dashboardHtml = (statusMsg = '', challengeData = null) => `
 
         ${statusMsg ? `<div class="alert">${statusMsg}</div>` : ''}
 
-        ${challengeData ? `
-        <div class="challenge-box">
-            <label style="color: #74b9ff; font-size: 14px;">🔐 OTP Verification Required for @${challengeData.username}</label>
-            <p style="font-size: 12px; color: #dfe6e9;">Code sent to: <b>${challengeData.contactPoint}</b></p>
-            <form action="/verify_otp" method="POST">
-                <input type="hidden" name="username" value="${challengeData.username}">
-                <div class="row">
-                    <div class="col"><input type="text" name="otpCode" placeholder="Enter 6-digit OTP code" required></div>
-                    <div style="width: 130px;"><button type="submit" class="btn-otp">💬 Verify OTP</button></div>
-                </div>
-            </form>
-        </div>
-        ` : ''}
-
         <form action="/connect" method="POST" class="form-group">
-            <label>🌸 𝗔𝗰𝗰𝗼𝘂𝗻𝘁 - < paste your username|password ></label>
+            <label>🌸 𝗔𝗰𝗰𝗼𝘂𝗻𝘁 - < paste your sessionid cookie here ></label>
             <div class="row">
-                <div class="col"><input type="text" name="credentials" placeholder="username|password" required></div>
+                <div class="col"><input type="text" name="sessionid" placeholder="Paste sessionid cookie here" required></div>
                 <div style="width: 130px;"><button type="submit">🌷 𝗖𝗼𝗻𝗻𝗲𝗰𝘁</button></div>
             </div>
         </form>
@@ -180,71 +161,24 @@ const dashboardHtml = (statusMsg = '', challengeData = null) => `
 app.get('/', (req, res) => res.send(dashboardHtml()));
 
 app.post('/connect', async (req, res) => {
-    const { credentials } = req.body;
-    if (!credentials || !credentials.includes('|')) {
-        return res.send(dashboardHtml("Error: Format must be username|password"));
-    }
-
-    const [username, password] = credentials.split('|').map(s => s.trim());
-
+    const { sessionid } = req.body;
     try {
         const ig = new IgApiClient();
-        ig.state.generateDevice(username);
-        
-        await ig.simulate.preLoginFlow();
-        await ig.account.login(username, password);
-        process.nextTick(async () => await ig.simulate.postLoginFlow());
-
-        sessions[username] = { igClient: ig };
-        addLog(`✅ Connected Successfully: @${username}`);
-        res.send(dashboardHtml(`Account @${username} logged in successfully!`));
+        ig.state.generateDevice('vidhayak_v2');
+        await ig.state.deserializeCookie(sessionid.trim());
+        const user = await ig.user.info(ig.state.cookieUserId);
+        sessions[user.username] = { igClient: ig };
+        addLog(`✅ Connected Successfully: @${user.username}`);
+        res.send(dashboardHtml(`Account @${user.username} connected successfully!`));
     } catch (e) {
-        if (e instanceof IgCheckpointError) {
-            try {
-                await ig.challenge.auto(e);
-                const challengeInfo = ig.challenge.state;
-                pendingChallenges[username] = { igClient: ig };
-                
-                addLog(`🔒 OTP Verification Required for @${username}`);
-                return res.send(dashboardHtml(`Checkpoint detected! Please enter OTP below.`, {
-                    username: username,
-                    contactPoint: challengeInfo._phone_number || challengeInfo._email || "your registered email/phone"
-                }));
-            } catch (challengeErr) {
-                addLog(`❌ Challenge Error for @${username}: ${challengeErr.message}`);
-                return res.send(dashboardHtml(`Failed to trigger OTP verification: ${challengeErr.message}`));
-            }
-        }
-
-        addLog(`❌ Login Failed for @${username}: ${e.message}`);
-        res.send(dashboardHtml(`Login Failed: Invalid username or password!`));
-    }
-});
-
-app.post('/verify_otp', async (req, res) => {
-    const { username, otpCode } = req.body;
-    if (!pendingChallenges[username]) {
-        return res.send(dashboardHtml("Session expired or invalid challenge request. Please login again."));
-    }
-
-    try {
-        const ig = pendingChallenges[username].igClient;
-        await ig.challenge.sendSecurityCode(otpCode);
-        
-        sessions[username] = { igClient: ig };
-        delete pendingChallenges[username];
-
-        addLog(`✅ OTP Verified Successfully for @${username}`);
-        res.send(dashboardHtml(`Account @${username} verified and logged in successfully!`));
-    } catch (e) {
-        addLog(`❌ OTP Verification Failed for @${username}: ${e.message}`);
-        res.send(dashboardHtml(`Invalid OTP code or verification failed. Try again.`));
+        addLog(`❌ Connection Failed: ${e.message}`);
+        res.send(dashboardHtml(`Connection Failed: Invalid Session ID.`));
     }
 });
 
 app.post('/fetch_groups', async (req, res) => {
     if (Object.keys(sessions).length === 0) {
-        return res.send(dashboardHtml("Please connect and login at least one account first!"));
+        return res.send(dashboardHtml("Please connect at least one account first!"));
     }
 
     for (const [username, data] of Object.entries(sessions)) {
@@ -264,7 +198,7 @@ app.post('/fetch_groups', async (req, res) => {
             addLog(`⚠ Fetch error for @${username}: ${e.message}`);
         }
     }
-    res.send(dashboardHtml("Groups fetched successfully! Check text area below."));
+    res.send(dashboardHtml("Groups fetched successfully!"));
 });
 
 app.post('/start', (req, res) => {
